@@ -1,0 +1,87 @@
+%%{init: {
+  "theme": "base",
+  "themeVariables": {
+    "primaryColor": "#1DB954",
+    "primaryTextColor": "#FFFFFF",
+    "primaryBorderColor": "#1DB954",
+    "lineColor": "#1DB954",
+    "secondaryColor": "#191414",
+    "tertiaryColor": "#282828",
+    "background": "#191414",
+    "mainBkg": "#282828",
+    "nodeBorder": "#1DB954",
+    "clusterBkg": "#191414",
+    "clusterBorder": "#535353",
+    "titleColor": "#FFFFFF",
+    "edgeLabelBackground": "#191414",
+    "fontFamily": "Helvetica, Arial, sans-serif"
+  }
+}}%%
+
+flowchart TD
+    subgraph AUTH["  Authentication  "]
+        ENV[/"🔑 .env<br/>Client ID · Client Secret"/]
+        OAUTH(["Spotipy OAuth"])
+        SPOTIFY_AUTH[/"🌐 Spotify Auth Page<br/>localhost:8888/callback"/]
+        DOTCACHE[("💾 .cache<br/>Access Token")]
+        CLIENT(["✅ Spotify Client<br/>session state"])
+
+        ENV --> OAUTH
+        OAUTH -->|"First run: browser opens"| SPOTIFY_AUTH
+        SPOTIFY_AUTH -->|"Token granted"| DOTCACHE
+        DOTCACHE --> CLIENT
+    end
+
+    subgraph HOME["  app.py — Home  "]
+        PROFILE["👤 User Profile<br/>Name · Avatar · Followers"]
+    end
+
+    CLIENT --> PROFILE
+
+    subgraph PAGES["  Streamlit Pages  "]
+        direction LR
+        P1["📊 Top Charts<br/><br/>Top Artists · Tracks<br/>Genre Breakdown<br/>Time Range Selector"]
+        P2["🎵 Audio Features<br/><br/>Radar Chart<br/>Feature Distributions<br/>Mood Quadrant"]
+        P3["🕐 Listening Patterns<br/><br/>Recently Played<br/>Hour · Day Heatmap<br/>Discovery Rate"]
+        P4["🎧 Playlist Analysis<br/><br/>Playlist Selector<br/>Mood Map<br/>Diversity Score"]
+    end
+
+    PROFILE -->|"Sidebar navigation"| PAGES
+
+    subgraph SPOTIFY_API["  Spotify API  "]
+        direction LR
+        A1(["user-top-read"])
+        A2(["audio_features"])
+        A3(["user-read-recently-played"])
+        A4(["user-library-read"])
+        A5(["playlist-read-private"])
+    end
+
+    P1 --> A1
+    P2 --> A1
+    P2 --> A2
+    P3 --> A3
+    P3 --> A4
+    P4 --> A5
+    P4 --> A2
+
+    subgraph CACHE_LAYER["  Cache Layer — st.cache_data  ttl=1h  "]
+        C1[("⚡ Cached Responses<br/>Avoids rate limits")]
+    end
+
+    A1 & A2 & A3 & A4 & A5 --> C1
+
+    C1 -->|"Pandas DataFrames"| VIZ(["📈 Plotly Charts<br/>Rendered in Streamlit"])
+
+    classDef authNode fill:#282828,stroke:#1DB954,color:#fff
+    classDef pageNode fill:#282828,stroke:#535353,color:#fff
+    classDef apiNode fill:#191414,stroke:#1DB954,color:#1DB954
+    classDef cacheNode fill:#282828,stroke:#1ED760,color:#fff
+    classDef vizNode fill:#1DB954,stroke:#1DB954,color:#191414
+
+    class ENV,SPOTIFY_AUTH,OAUTH,DOTCACHE,CLIENT authNode
+    class PROFILE authNode
+    class P1,P2,P3,P4 pageNode
+    class A1,A2,A3,A4,A5 apiNode
+    class C1 cacheNode
+    class VIZ vizNode

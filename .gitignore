@@ -1,0 +1,23 @@
+# Credentials & secrets
+.env
+.cache
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Jupyter (legacy)
+*.ipynb
+*.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml
