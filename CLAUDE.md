@@ -16,26 +16,28 @@ app.py                      # Home page — auth, profile, navigation
 main.py                     # Alternate entry point (unused/legacy)
 pages/
   1_Top_Charts.py           # Top artists, tracks, genre breakdown
-  2_Audio_Features.py       # Sonic profile, mood quadrant, feature distributions
+  2_Audio_Features.py       # Sonic profile, mood quadrant, feature distributions (503 fallback active)
   3_Listening_Patterns.py   # Heatmap, recently played feed, library timeline
-  4_Playlist_Analysis.py    # Mood map, radar, track list per playlist
+  4_Playlist_Analysis.py    # Mood map, radar, track list per playlist (403 fallback active)
 pyproject.toml              # Project metadata and dependencies
 uv.lock                     # Locked dependency versions
-.env                        # Secrets (gitignored) — see Environment Variables below
+.env                        # Secrets (gitignored) — copy from .env.example and fill in values
+.env.example                # Committed template showing required env vars (no real values)
 .cache                      # spotipy OAuth token cache (gitignored)
+.cache-*                    # spotipy token variants (gitignored)
 ```
 
 ## Environment variables
 
-Create a `.env` file in the project root (never commit it):
+`.env` is gitignored and never committed. Copy `.env.example` to `.env` and fill in real values:
 
 ```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
+SPOTIFY_CLIENT_ID=your_client_id_here
+SPOTIFY_CLIENT_SECRET=your_client_secret_here
 SPOTIPY_REDIRECT_URI=http://localhost:8888/callback
 ```
 
-Obtain credentials at [developer.spotify.com](https://developer.spotify.com/dashboard). The redirect URI must be registered in the app settings there.
+Obtain credentials at [developer.spotify.com](https://developer.spotify.com/dashboard). The redirect URI must be registered in the app settings there. `python-dotenv` loads this file automatically on every `streamlit run` — no manual sourcing needed.
 
 ## OAuth scopes
 
@@ -50,11 +52,18 @@ Defined in `app.py`:
 
 **`/audio-features` is deprecated for apps created after November 27, 2024 — it returns HTTP 403.**
 
-Affected pages handle this gracefully:
-- **Page 2 (Audio Features)**: shows a deprecation notice and stops rendering
-- **Page 4 (Playlist Analysis)**: skips mood map, radar chart, and diversity score; falls back to popularity/duration data in the track list
+Both affected pages import `spotipy` directly and catch `SpotifyException` with `http_status == 403`:
 
-When Spotify restores access (or if using a pre-November-2024 app), these pages will work as designed.
+- **Page 2 (Audio Features)**: `fetch_tracks_with_features()` returns an empty DataFrame on 403; the page shows a deprecation notice and stops
+- **Page 4 (Playlist Analysis)**: `build_playlist_df()` sets `has_audio = False` on 403, builds rows without audio feature columns, and the page conditionally skips the mood map, radar chart, and diversity score — the track list and basic stats still render
+
+When Spotify restores access (or if using a pre-November-2024 app), both pages will work as designed with no code changes needed.
+
+## Security — credential hygiene
+
+- `.env` and `.cache-*` are gitignored; real credentials must never be committed
+- A legacy `.cache-` token file (containing a spotipy refresh token) was committed in early history and has been **fully scrubbed** using `git filter-repo --path .cache- --invert-paths` followed by a force-push
+- If you ever suspect a token leak: regenerate the client secret in the Spotify Developer Dashboard — this immediately invalidates all existing refresh tokens for that app
 
 ## Streamlit patterns
 
@@ -74,4 +83,8 @@ uv run streamlit run app.py
 
 # Add a dependency
 uv add <package>
+
+# If git remote is ever missing (e.g. after git filter-repo):
+git remote add origin https://github.com/JuanMoreno11/Spotify_Exploration.git
+git push --force origin master
 ```
